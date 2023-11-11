@@ -16,9 +16,9 @@ let sortRunning = false;
 let viewProjPtr: number;
 let fBufferPtr: number;
 let depthBufferPtr: number;
-let depthIndexPtr: number;
-let startsPtr: number;
 let countsPtr: number;
+let indicesPtr: number;
+let sortedIndicesPtr: number;
 
 const initScene = async () => {
     if (!wasmModule) await initWasm();
@@ -28,16 +28,31 @@ const initScene = async () => {
 
     viewProjPtr = wasmModule._malloc(16 * 4);
     depthBufferPtr = wasmModule._malloc(scene.vertexCount * 4);
-    depthIndexPtr = wasmModule._malloc(scene.vertexCount * 4);
-    startsPtr = wasmModule._malloc(scene.vertexCount * 4);
-    countsPtr = wasmModule._malloc(scene.vertexCount * 4);
+    countsPtr = wasmModule._malloc(256 * 4);
+    indicesPtr = wasmModule._malloc(scene.vertexCount * 4);
+    sortedIndicesPtr = wasmModule._malloc(scene.vertexCount * 4);
 };
 
 const runSort = (viewProj: Matrix4) => {
     const viewProjBuffer = new Float32Array(viewProj.buffer);
     wasmModule.HEAPF32.set(viewProjBuffer, viewProjPtr / 4);
-    wasmModule._sort(viewProjPtr, scene.vertexCount, fBufferPtr, depthBufferPtr, depthIndexPtr, startsPtr, countsPtr);
-    const depthIndex = new Uint32Array(wasmModule.HEAPU32.buffer, depthIndexPtr, scene.vertexCount);
+    wasmModule._calculateDepth(viewProjPtr, fBufferPtr, depthBufferPtr, indicesPtr, scene.vertexCount);
+    const numBits = 8;
+    const numPasses = 32 / numBits;
+    for (let i = 0; i < numPasses; i++) {
+        wasmModule._radixSortPass(
+            depthBufferPtr,
+            indicesPtr,
+            sortedIndicesPtr,
+            countsPtr,
+            scene.vertexCount,
+            i * numBits,
+        );
+        const temp = indicesPtr;
+        indicesPtr = sortedIndicesPtr;
+        sortedIndicesPtr = temp;
+    }
+    const depthIndex = new Uint32Array(wasmModule.HEAPU32.buffer, sortedIndicesPtr, scene.vertexCount);
     const transferableDepthIndex = new Uint32Array(depthIndex.slice());
     self.postMessage({ depthIndex: transferableDepthIndex }, [transferableDepthIndex.buffer]);
 };
@@ -46,7 +61,9 @@ const throttledSort = () => {
     if (!sortRunning) {
         sortRunning = true;
         const lastView = viewProj;
+        console.time("sort");
         runSort(lastView);
+        console.timeEnd("sort");
         setTimeout(() => {
             sortRunning = false;
             if (lastView !== viewProj) {

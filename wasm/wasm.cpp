@@ -5,11 +5,7 @@
 
 extern "C"
 {
-    void sort(
-        float *viewProj, uint32_t vertexCount,
-        float *fBuffer, uint32_t *depthBuffer,
-        uint32_t *depthIndex, uint32_t *starts,
-        uint32_t *counts)
+    void calculateDepth(float *viewProj, float *fBuffer, uint32_t *depthBuffer, uint32_t *indices, int vertexCount)
     {
         int32_t minDepth = 0x7fffffff;
         int32_t maxDepth = 0x80000000;
@@ -20,34 +16,49 @@ extern "C"
             float f2 = viewProj[10] * fBuffer[3 * i + 2];
             int32_t depth = (f0 + f1 + f2) * 4096;
             depthBuffer[i] = depth;
-            if (depth > maxDepth)
-            {
-                maxDepth = depth;
-            }
             if (depth < minDepth)
             {
                 minDepth = depth;
             }
+            if (depth > maxDepth)
+            {
+                maxDepth = depth;
+            }
         }
 
-        const uint32_t depthRange = 256 * 256;
-        const float depthInv = (float)depthRange / (maxDepth - minDepth);
-        memset(counts, 0, depthRange * sizeof(uint32_t));
+        const float depthInv = 1.0f / (maxDepth - minDepth);
         for (uint32_t i = 0; i < vertexCount; i++)
         {
-            depthBuffer[i] = (depthBuffer[i] - minDepth) * depthInv;
-            counts[depthBuffer[i]]++;
+            depthBuffer[i] = (depthBuffer[i] - minDepth) * depthInv * 0xffff;
+            indices[i] = i;
         }
+    }
 
-        starts[0] = 0;
-        for (uint32_t i = 1; i < depthRange; i++)
-        {
-            starts[i] = starts[i - 1] + counts[i - 1];
-        }
+    void radixSortPass(uint32_t *input, uint32_t *indices, uint32_t *sortedIndices, uint32_t *counts, uint32_t vertexCount, int bitOffset)
+    {
+        memset(counts, 0, 256 * sizeof(uint32_t));
 
+        // Count occurrences of each bit pattern
         for (uint32_t i = 0; i < vertexCount; i++)
         {
-            depthIndex[starts[depthBuffer[i]]++] = i;
+            uint32_t bitPattern = (input[indices[i]] >> bitOffset) & 0xff;
+            counts[bitPattern]++;
+        }
+
+        // Accumulate counts
+        uint32_t total = 0;
+        for (uint32_t i = 0; i < 256; i++)
+        {
+            uint32_t oldCount = counts[i];
+            counts[i] = total;
+            total += oldCount;
+        }
+
+        // Rearrange elements into output array
+        for (uint32_t i = 0; i < vertexCount; i++)
+        {
+            uint32_t bitPattern = (input[indices[i]] >> bitOffset) & 0xff;
+            sortedIndices[counts[bitPattern]++] = indices[i];
         }
     }
 }

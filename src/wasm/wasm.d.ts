@@ -1,20 +1,4 @@
-interface WasmModule {
-    _malloc(size: number): number;
-    _free(ptr: number): void;
-    _sort(
-        viewProj: number,
-        vertexCount: number,
-        fBuffer: number,
-        center: number,
-        color: number,
-        covA: number,
-        covB: number,
-        depthBuffer: number,
-        depthIndex: number,
-        starts: number,
-        counts: number,
-    ): void;
-}
+interface WasmModule {}
 
 declare const loadWasm: () => Promise<WasmModule>;
 export default loadWasm;
