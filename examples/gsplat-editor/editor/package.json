@@ -1,0 +1,20 @@
+{
+    "name": "editor",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "preview": "vite preview",
+        "start": "serve dist"
+    },
+    "devDependencies": {
+        "serve": "^14.2.1",
+        "typescript": "^5.2.2",
+        "vite": "^5.0.0"
+    },
+    "dependencies": {
+        "gsplat": "^1.0.6"
+    }
+}

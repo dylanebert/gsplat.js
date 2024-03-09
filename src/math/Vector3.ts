@@ -64,14 +64,14 @@ class Vector3 {
 
     divide(v: number): Vector3;
     divide(v: Vector3): Vector3;
-    divide(v: number | Vector3 ): Vector3 {
+    divide(v: number | Vector3): Vector3 {
         if (typeof v === "number") {
             return new Vector3(this.x / v, this.y / v, this.z / v);
         } else {
             return new Vector3(this.x / v.x, this.y / v.y, this.z / v.z);
         }
     }
-    
+
     cross(v: Vector3): Vector3 {
         const x = this.y * v.z - this.z * v.y;
         const y = this.z * v.x - this.x * v.z;

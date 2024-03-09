@@ -8,6 +8,7 @@ export { Loader } from "./loaders/Loader";
 export { PLYLoader } from "./loaders/PLYLoader";
 export { WebGLRenderer } from "./renderers/WebGLRenderer";
 export { OrbitControls } from "./controls/OrbitControls";
+export { FPSControls } from "./controls/FPSControls";
 export { Quaternion } from "./math/Quaternion";
 export { Vector3 } from "./math/Vector3";
 export { Vector4 } from "./math/Vector4";

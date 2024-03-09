@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>gsplat.js - Editor Demo</title>
+    </head>
+    <body>
+        <div id="progress-container">
+            <dialog open id="progress-dialog">
+                <p>
+                    <label for="progress-indicator">Loading scene...</label>
+                </p>
+                <progress max="100" id="progress-indicator"></progress>
+            </dialog>
+        </div>
+
+        <button id="upload-button" class="tool-button" title="Import Splat">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 32 32">
+                <path fill="#ddd" d="M28 19H14.83l2.58-2.59L16 15l-5 5l5 5l1.41-1.41L14.83 21H28z" />
+                <path
+                    fill="#ddd"
+                    d="M24 14v-4a1 1 0 0 0-.29-.71l-7-7A1 1 0 0 0 16 2H6a2 2 0 0 0-2 2v24a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2h-2v2H6V4h8v6a2 2 0 0 0 2 2h6v2Zm-8-4V4.41L21.59 10Z"
+                />
+            </svg>
+        </button>
+
+        <div id="upload-modal" class="modal">
+            <div class="modal-content">
+                <span id="upload-modal-close" class="close">&times;</span>
+                <p>Import Splat</p>
+                <hr class="divider" />
+                <div class="modal-section">
+                    <p>Upload a file</p>
+                    <input type="file" id="file-input" accept=".splat,.ply" />
+                    <label for="file-input" id="file-input-label">Choose File</label>
+                </div>
+                <div class="modal-section">
+                    <p>Or enter a URL</p>
+                    <input
+                        type="text"
+                        id="url-input"
+                        placeholder="https://huggingface.co/datasets/dylanebert/3dgs/resolve/main/bonsai/bonsai-7k-mini.splat"
+                    />
+                    <button id="upload-submit" class="submit">Import</button>
+                </div>
+                <div class="modal-section">
+                    <p id="upload-error"></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="download-modal" class="modal">
+            <div class="modal-content">
+                <span id="download-modal-close" class="close">&times;</span>
+                <p>Export Splat</p>
+                <hr class="divider" />
+                <div class="modal-section">
+                    <div id="format-select">
+                        <p>Select format</p>
+                        <div>
+                            <input type="radio" id="splat" name="format" value="splat" checked />
+                            <label for="splat">.splat</label>
+                        </div>
+                        <div>
+                            <input type="radio" id="ply" name="format" value="ply" />
+                            <label for="ply">.ply</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-section">
+                    <button id="download-submit" class="submit">Export</button>
+                </div>
+            </div>
+        </div>
+
+        <button id="download-button" class="tool-button" title="Export Splat">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 32 32">
+                <path
+                    fill="#ddd"
+                    d="M26 24v4H6v-4H4v4a2 2 0 0 0 2 2h20a2 2 0 0 0 2-2v-4zm0-10l-1.41-1.41L17 20.17V2h-2v18.17l-7.59-7.58L6 14l10 10z"
+                />
+            </svg>
+        </button>
+
+        <button id="controls-display-button" class="tool-button active" title="Show/Hide Controls">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 32 32">
+                <path
+                    fill="#ddd"
+                    d="M16 2a14 14 0 1 0 14 14A14 14 0 0 0 16 2m0 26a12 12 0 1 1 12-12a12 12 0 0 1-12 12"
+                />
+                <circle cx="16" cy="23.5" r="1.5" fill="#ddd" />
+                <path
+                    fill="#ddd"
+                    d="M17 8h-1.5a4.49 4.49 0 0 0-4.5 4.5v.5h2v-.5a2.5 2.5 0 0 1 2.5-2.5H17a2.5 2.5 0 0 1 0 5h-2v4.5h2V17a4.5 4.5 0 0 0 0-9"
+                />
+            </svg>
+        </button>
+
+        <div id="controls-display" class="active">
+            <p>Controls</p>
+            <hr class="divider" />
+            <p>Camera</p>
+            <div class="control-item">
+                <p class="control-name">Orbit</p>
+                <p class="control-icon">MMB / Alt + LMB</p>
+            </div>
+            <div class="control-item">
+                <p class="control-name">Pan</p>
+                <p class="control-icon">Shift + MMB / Alt + RMB</p>
+            </div>
+            <div class="control-item">
+                <p class="control-name">Zoom</p>
+                <p class="control-icon">Scroll</p>
+            </div>
+            <hr class="divider" />
+            <p>Actions</p>
+            <div class="control-item">
+                <p class="control-name">Select</p>
+                <p class="control-icon">LMB</p>
+            </div>
+            <div class="control-item">
+                <p class="control-name">Grab</p>
+                <p class="control-icon">G</p>
+            </div>
+            <div class="control-item">
+                <p class="control-name">Rotate</p>
+                <p class="control-icon">R</p>
+            </div>
+            <div class="control-item">
+                <p class="control-name">Scale</p>
+                <p class="control-icon">S</p>
+            </div>
+            <div class="control-item">
+                <p class="control-name">Delete</p>
+                <p class="control-icon">X</p>
+            </div>
+            <hr class="divider" />
+            <p>During Action</p>
+            <div class="control-item">
+                <p class="control-name">Confirm Action</p>
+                <p class="control-icon">LMB</p>
+            </div>
+            <div class="control-item">
+                <p class="control-name">Cancel Action</p>
+                <p class="control-icon">RMB</p>
+            </div>
+            <div class="control-item">
+                <p class="control-name">Lock X Axis</p>
+                <p class="control-icon">X</p>
+            </div>
+            <div class="control-item">
+                <p class="control-name">Lock Y Axis</p>
+                <p class="control-icon">Y</p>
+            </div>
+            <div class="control-item">
+                <p class="control-name">Lock Z Axis</p>
+                <p class="control-icon">Z</p>
+            </div>
+            <hr class="divider" />
+            <div class="control-item">
+                <p class="control-name">Undo</p>
+                <p class="control-icon">Ctrl + Z</p>
+            </div>
+            <div id="about">Click here to learn more</div>
+        </div>
+
+        <canvas id="canvas"> </canvas>
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>

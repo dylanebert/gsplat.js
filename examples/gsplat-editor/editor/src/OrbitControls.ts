@@ -1,29 +1,27 @@
-import { Camera } from "../cameras/Camera";
-import { Matrix3 } from "../math/Matrix3";
-import { Quaternion } from "../math/Quaternion";
-import { Vector3 } from "../math/Vector3";
+import * as SPLAT from "gsplat";
 
 class OrbitControls {
+    public enabled: boolean = true;
+
     minAngle: number = -90;
     maxAngle: number = 90;
     minZoom: number = 0.1;
-    maxZoom: number = 30;
-    orbitSpeed: number = 1;
-    panSpeed: number = 1;
-    zoomSpeed: number = 1;
-    dampening: number = 0.12;
-    setCameraTarget: (newTarget: Vector3) => void = () => {};
+    maxZoom: number = 50;
+    orbitSpeed: number = 1.75;
+    panSpeed: number = 1.25;
+    zoomSpeed: number = 2;
+    dampening: number = 0.5;
+    setCameraTarget: (newTarget: SPLAT.Vector3) => void = () => {};
     update: () => void;
     dispose: () => void;
 
     constructor(
-        camera: Camera,
+        camera: SPLAT.Camera,
         canvas: HTMLElement,
         alpha: number = 0.5,
         beta: number = 0.5,
-        radius: number = 5,
-        enableKeyboardControls: boolean = true,
-        inputTarget: Vector3 = new Vector3(),
+        radius: number = 13,
+        inputTarget: SPLAT.Vector3 = new SPLAT.Vector3(),
     ) {
         let target = inputTarget.clone();
 
@@ -38,8 +36,6 @@ class OrbitControls {
         let lastX = 0;
         let lastY = 0;
 
-        const keys: { [key: string]: boolean } = {};
-
         let isUpdatingCamera = false;
 
         const onCameraChange = () => {
@@ -53,51 +49,46 @@ class OrbitControls {
             const y = camera.position.y + desiredRadius * Math.sin(desiredBeta);
             const z = camera.position.z + desiredRadius * Math.cos(desiredAlpha) * Math.cos(desiredBeta);
 
-            desiredTarget = new Vector3(x, y, z);
+            desiredTarget = new SPLAT.Vector3(x, y, z);
         };
 
         camera.addEventListener("objectChanged", onCameraChange);
 
-        this.setCameraTarget = (newTarget: Vector3) => {
+        this.setCameraTarget = (newTarget: SPLAT.Vector3) => {
             const dx = newTarget.x - camera.position.x;
             const dy = newTarget.y - camera.position.y;
             const dz = newTarget.z - camera.position.z;
             desiredRadius = Math.sqrt(dx * dx + dy * dy + dz * dz);
             desiredBeta = Math.atan2(dy, Math.sqrt(dx * dx + dz * dz));
             desiredAlpha = -Math.atan2(dx, dz);
-            desiredTarget = new Vector3(newTarget.x, newTarget.y, newTarget.z);
+            desiredTarget = new SPLAT.Vector3(newTarget.x, newTarget.y, newTarget.z);
         };
 
         const computeZoomNorm = () => {
             return 0.1 + (0.9 * (desiredRadius - this.minZoom)) / (this.maxZoom - this.minZoom);
         };
 
-        const onKeyDown = (e: KeyboardEvent) => {
-            keys[e.code] = true;
-            // Map arrow keys to WASD keys
-            if (e.code === "ArrowUp") keys["KeyW"] = true;
-            if (e.code === "ArrowDown") keys["KeyS"] = true;
-            if (e.code === "ArrowLeft") keys["KeyA"] = true;
-            if (e.code === "ArrowRight") keys["KeyD"] = true;
-        };
-
-        const onKeyUp = (e: KeyboardEvent) => {
-            keys[e.code] = false;
-            // Map arrow keys to WASD keys
-            if (e.code === "ArrowUp") keys["KeyW"] = false;
-            if (e.code === "ArrowDown") keys["KeyS"] = false;
-            if (e.code === "ArrowLeft") keys["KeyA"] = false;
-            if (e.code === "ArrowRight") keys["KeyD"] = false;
-        };
-
         const onMouseDown = (e: MouseEvent) => {
             preventDefault(e);
 
-            dragging = true;
-            panning = e.button === 2;
-            lastX = e.clientX;
-            lastY = e.clientY;
-            window.addEventListener("mouseup", onMouseUp);
+            if (!this.enabled) return;
+
+            if (e.button === 1) {
+                dragging = true;
+                panning = e.shiftKey;
+                lastX = e.clientX;
+                lastY = e.clientY;
+            } else if (e.altKey && e.button === 0) {
+                dragging = true;
+                panning = false;
+                lastX = e.clientX;
+                lastY = e.clientY;
+            } else if (e.altKey && e.button === 2) {
+                dragging = true;
+                panning = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+            }
         };
 
         const onMouseUp = (e: MouseEvent) => {
@@ -105,13 +96,12 @@ class OrbitControls {
 
             dragging = false;
             panning = false;
-            window.removeEventListener("mouseup", onMouseUp);
         };
 
         const onMouseMove = (e: MouseEvent) => {
             preventDefault(e);
 
-            if (!dragging || !camera) return;
+            if (!this.enabled || !dragging || !camera) return;
 
             const dx = e.clientX - lastX;
             const dy = e.clientY - lastY;
@@ -120,9 +110,9 @@ class OrbitControls {
                 const zoomNorm = computeZoomNorm();
                 const panX = -dx * this.panSpeed * 0.01 * zoomNorm;
                 const panY = -dy * this.panSpeed * 0.01 * zoomNorm;
-                const R = Matrix3.RotationFromQuaternion(camera.rotation).buffer;
-                const right = new Vector3(R[0], R[3], R[6]);
-                const up = new Vector3(R[1], R[4], R[7]);
+                const R = SPLAT.Matrix3.RotationFromQuaternion(camera.rotation).buffer;
+                const right = new SPLAT.Vector3(R[0], R[3], R[6]);
+                const up = new SPLAT.Vector3(R[1], R[4], R[7]);
                 desiredTarget = desiredTarget.add(right.multiply(panX));
                 desiredTarget = desiredTarget.add(up.multiply(panY));
             } else {
@@ -141,6 +131,8 @@ class OrbitControls {
         const onWheel = (e: WheelEvent) => {
             preventDefault(e);
 
+            if (!this.enabled) return;
+
             const zoomNorm = computeZoomNorm();
             desiredRadius += e.deltaY * this.zoomSpeed * 0.025 * zoomNorm;
             desiredRadius = Math.min(Math.max(desiredRadius, this.minZoom), this.maxZoom);
@@ -148,6 +140,8 @@ class OrbitControls {
 
         const onTouchStart = (e: TouchEvent) => {
             preventDefault(e);
+
+            if (!this.enabled) return;
 
             if (e.touches.length === 1) {
                 dragging = true;
@@ -176,7 +170,7 @@ class OrbitControls {
         const onTouchMove = (e: TouchEvent) => {
             preventDefault(e);
 
-            if (!dragging || !camera) return;
+            if (!this.enabled || !dragging || !camera) return;
 
             if (panning) {
                 const zoomNorm = computeZoomNorm();
@@ -193,9 +187,9 @@ class OrbitControls {
                 const touchY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
                 const dx = touchX - lastX;
                 const dy = touchY - lastY;
-                const R = Matrix3.RotationFromQuaternion(camera.rotation).buffer;
-                const right = new Vector3(R[0], R[3], R[6]);
-                const up = new Vector3(R[1], R[4], R[7]);
+                const R = SPLAT.Matrix3.RotationFromQuaternion(camera.rotation).buffer;
+                const right = new SPLAT.Vector3(R[0], R[3], R[6]);
+                const up = new SPLAT.Vector3(R[1], R[4], R[7]);
                 desiredTarget = desiredTarget.add(right.multiply(-dx * this.panSpeed * 0.025 * zoomNorm));
                 desiredTarget = desiredTarget.add(up.multiply(-dy * this.panSpeed * 0.025 * zoomNorm));
                 lastX = touchX;
@@ -231,32 +225,12 @@ class OrbitControls {
             const x = target.x + radius * Math.sin(alpha) * Math.cos(beta);
             const y = target.y - radius * Math.sin(beta);
             const z = target.z - radius * Math.cos(alpha) * Math.cos(beta);
-            camera.position = new Vector3(x, y, z);
+            camera.position = new SPLAT.Vector3(x, y, z);
 
             const direction = target.subtract(camera.position).normalize();
             const rx = Math.asin(-direction.y);
             const ry = Math.atan2(direction.x, direction.z);
-            camera.rotation = Quaternion.FromEuler(new Vector3(rx, ry, 0));
-
-            const moveSpeed = 0.025;
-            const rotateSpeed = 0.01;
-
-            const R = Matrix3.RotationFromQuaternion(camera.rotation).buffer;
-            const forward = new Vector3(-R[2], -R[5], -R[8]);
-            const right = new Vector3(R[0], R[3], R[6]);
-
-            if (keys["KeyS"]) desiredTarget = desiredTarget.add(forward.multiply(moveSpeed));
-            if (keys["KeyW"]) desiredTarget = desiredTarget.subtract(forward.multiply(moveSpeed));
-            if (keys["KeyA"]) desiredTarget = desiredTarget.subtract(right.multiply(moveSpeed));
-            if (keys["KeyD"]) desiredTarget = desiredTarget.add(right.multiply(moveSpeed));
-
-            // Add rotation with 'e' and 'q' for horizontal rotation
-            if (keys["KeyE"]) desiredAlpha += rotateSpeed;
-            if (keys["KeyQ"]) desiredAlpha -= rotateSpeed;
-
-            // Add rotation with 'r' and 'f' for vertical rotation
-            if (keys["KeyR"]) desiredBeta += rotateSpeed;
-            if (keys["KeyF"]) desiredBeta -= rotateSpeed;
+            camera.rotation = SPLAT.Quaternion.FromEuler(new SPLAT.Vector3(rx, ry, 0));
 
             isUpdatingCamera = false;
         };
@@ -279,17 +253,7 @@ class OrbitControls {
             canvas.removeEventListener("touchstart", onTouchStart);
             canvas.removeEventListener("touchend", onTouchEnd);
             canvas.removeEventListener("touchmove", onTouchMove);
-
-            if (enableKeyboardControls) {
-                window.removeEventListener("keydown", onKeyDown);
-                window.removeEventListener("keyup", onKeyUp);
-            }
         };
-
-        if (enableKeyboardControls) {
-            window.addEventListener("keydown", onKeyDown);
-            window.addEventListener("keyup", onKeyUp);
-        }
 
         canvas.addEventListener("dragenter", preventDefault);
         canvas.addEventListener("dragover", preventDefault);
@@ -297,6 +261,7 @@ class OrbitControls {
         canvas.addEventListener("contextmenu", preventDefault);
 
         canvas.addEventListener("mousedown", onMouseDown);
+        canvas.addEventListener("mouseup", onMouseUp);
         canvas.addEventListener("mousemove", onMouseMove);
         canvas.addEventListener("wheel", onWheel);
 
