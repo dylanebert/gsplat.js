@@ -4,8 +4,9 @@ import { Matrix3 } from "../math/Matrix3";
 import { Vector3 } from "../math/Vector3";
 
 class FPSControls {
-    moveSpeed: number = 2.5;
-    lookSpeed: number = 1.0;
+    moveSpeed: number = 2.0;
+    lookSpeed: number = 0.7;
+    dampening: number = 0.5;
     update: () => void;
     dispose: () => void;
 
@@ -80,7 +81,7 @@ class FPSControls {
             }
 
             targetPosition = targetPosition.add(move.multiply(this.moveSpeed * 0.01));
-            camera.position = camera.position.add(targetPosition.subtract(camera.position).multiply(0.1));
+            camera.position = camera.position.add(targetPosition.subtract(camera.position).multiply(this.dampening));
 
             camera.rotation = Quaternion.FromEuler(new Vector3(pitch, yaw, 0));
         };
